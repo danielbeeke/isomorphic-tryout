@@ -42,6 +42,11 @@ export class Router extends Module {
   }
 
   start () {
+    this.attachLinks();
+    this.listen();
+  }
+
+  attachLinks () {
     let links = document.querySelectorAll('a');
 
     Array.from(links).forEach(link => {
@@ -50,8 +55,6 @@ export class Router extends Module {
         event.preventDefault();
       });
     });
-
-    this.listen();
   }
 
   /**
@@ -125,6 +128,7 @@ export class Router extends Module {
 
           controller.execute().then(markup => {
             document.body.innerHTML = markup;
+            this.attachLinks();
           });
         });
         hasMatch = true;

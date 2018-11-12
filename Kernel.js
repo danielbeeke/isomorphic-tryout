@@ -48,8 +48,23 @@ export class Kernel {
   }
 
   get environment () {
-    let keys = Object.keys(window);
-    return keys.includes('denoMain') ? 'server' : 'client';
+    let environment;
+    if (typeof window !== 'undefined') {
+      let keys = Object.keys(window);
+
+      if (keys.includes('denoMain')) {
+        environment = 'deno';
+      }
+      else {
+        environment = 'client';
+      }
+    }
+
+    if (typeof global !== 'undefined') {
+      environment = 'node';
+    }
+
+    return environment;
   }
 
 }
