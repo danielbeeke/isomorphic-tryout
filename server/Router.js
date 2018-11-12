@@ -1,7 +1,6 @@
 import { Module } from './Module.js';
-import http from 'http';
-import fs from 'fs';
-import path from 'path';
+import { listen } from 'https://raw.githubusercontent.com/lenkan/deno-http/v0.0.4/src/http'
+import { readDir, readFile } from 'deno';
 
 export class Router extends Module {
   constructor () {
@@ -9,89 +8,60 @@ export class Router extends Module {
     this.controllers = {};
   }
 
+  /**
+   * Starts the server side router (HTTP server)
+   */
   start () {
-    http.createServer((request, response) => {
-      let url = request.url;
-
-      this.serveStaticFiles(request, response);
-      this.serveController(request, response);
-
-    }).listen(3000);
+    listen('127.0.0.1:3000', this.serve());
+    console.log('Listening on port 3000');
   }
 
-  serveStaticFiles(request, response) {
-    let filePath = '.' + request.url;
+  getContentType (name) {
+    const extension = name.split('.').pop();
+    const contentTypes = {
+      'css': 'text/css',
+      'js': 'text/javascript',
+      'html': 'text/html'
+    };
 
-    if (filePath.substring(2, 8) === 'server') {
-      filePath = filePath.replace('server', 'client');
-    }
-
-    if (fs.existsSync(filePath)) {
-      let extname = path.extname(filePath);
-      let contentType = 'text/html';
-      switch (extname) {
-        case '.js':
-          contentType = 'text/javascript';
-          break;
-        case '.css':
-          contentType = 'text/css';
-          break;
-        case '.json':
-          contentType = 'application/json';
-          break;
-        case '.png':
-          contentType = 'image/png';
-          break;
-        case '.jpg':
-          contentType = 'image/jpg';
-          break;
-        case '.wav':
-          contentType = 'audio/wav';
-          break;
-      }
-
-      fs.readFile(filePath, 'utf8', function(error, content) {
-        if (error) {
-          if(error.code === 'ENOENT'){
-            fs.readFile('./404.html', function(error, content) {
-              response.writeHead(200, { 'Content-Type': contentType });
-              response.end(content, 'utf-8');
-            });
-          }
-          else {
-            response.writeHead(500);
-            response.end('Sorry, check with the site admin for error: '+error.code+' ..\n');
-            response.end();
-          }
-        }
-        else {
-          response.writeHead(200, { 'Content-Type': contentType });
-          response.end(content, 'utf-8');
-        }
-      });
-    }
+    return contentTypes[extension] ? contentTypes[extension] : 'text/html';
   }
 
-  serveController (request, response) {
-    let url = request.url;
-    if (this.controllers[url]) {
-      let currentPathController = this.controllers[url];
-      let execution = currentPathController.execute();
+  async getFile (path) {
+    let pathParts = path.split('/');
+    let name = pathParts.pop();
+    let folder = './' + pathParts.join('/');
+    const files = await readDir(folder);
+    const file = files.find(file => file.name === name);
+    if (!file) { return undefined }
+    return await readFile(file.path);
+  }
 
-      if (execution instanceof Promise) {
-        execution.then(markup => {
-          response.writeHead(200, {
-            'Content-Length': Buffer.byteLength(markup),
-            'Content-Type': 'text/html'
-          });
-          response.write(markup);
-          response.end();
-        })
+  /**
+   * Static file server
+   */
+
+  serve () {
+    return async (req, res) => {
+      let path = req.path.replace(/^$/, 'index.html');
+      let fileName = path.substring(1);
+
+      let content = await this.getFile(fileName);
+      const contentType = this.getContentType(fileName);
+
+      if (!content && this.controllers[path]) {
+        const encoder = new TextEncoder();
+        let currentPathController = this.controllers[path];
+        content = encoder.encode(await currentPathController.execute());
       }
-      else {
-        response.write(execution);
-        response.end('ok');
-      }
+
+      if (!content) { return res.status(404, 'Not Found').send() }
+
+      return res.status(200, 'OK')
+        .headers({
+          'Content-Length': content.byteLength.toString(),
+          'Content-Type': contentType
+        }).send(content)
     }
   }
 

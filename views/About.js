@@ -12,6 +12,8 @@ export let About = `<!DOCTYPE html>
 
 <div class="app"></div>
     <h1>About</h1>
+    
+    <a href="/home">Home</a>
 </body>
 
 </html>`

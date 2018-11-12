@@ -1,6 +1,3 @@
-import { doImport as serverImport } from './server/Helpers.js';
-import { doImport as clientImport } from './client/Helpers.js';
-
 export class Kernel {
   constructor () {
     this.modules = {};
@@ -8,7 +5,7 @@ export class Kernel {
     this.views = {};
   }
 
-  module (moduleName) {
+  async module (moduleName) {
     return this._load(
       'modules',
       moduleName,
@@ -16,7 +13,7 @@ export class Kernel {
     );
   }
 
-  view (viewName) {
+  async view (viewName) {
     return this._load(
       'views',
       viewName,
@@ -24,7 +21,7 @@ export class Kernel {
     );
   }
 
-  controller (controllerName) {
+  async controller (controllerName) {
     return this._load(
       'controllers',
       controllerName,
@@ -37,8 +34,7 @@ export class Kernel {
       return new Promise(resolve => resolve(this[type][name]))
     }
     else {
-      let doImport = this.environment === 'server' ? serverImport : clientImport;
-      return doImport(file)
+      return import(file)
         .then(loadedModule => {
           if (typeof loadedModule[name] === 'function') {
             this[type][name] = new loadedModule[name](this);
@@ -49,11 +45,11 @@ export class Kernel {
           return this[type][name];
         });
     }
-
   }
 
   get environment () {
-    return typeof window === 'undefined' ? 'server' : 'client';
+    let keys = Object.keys(window);
+    return keys.includes('denoMain') ? 'server' : 'client';
   }
 
 }
