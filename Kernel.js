@@ -1,70 +1,56 @@
 export class Kernel {
   constructor () {
     this.modules = {};
-    this.controllers = {};
-    this.views = {};
+    this.sharedModules = {};
+    this.components = {};
   }
 
-  async module (moduleName) {
+  async module (moduleName, variables = {}) {
     return this._load(
       'modules',
       moduleName,
-      `./${this.environment}/${moduleName}.js`
+      `./${this.environment}/${moduleName}.js`,
+      variables
     );
   }
 
-  async view (viewName) {
+  async sharedModule (moduleName, variables = {}) {
     return this._load(
-      'views',
-      viewName,
-      `./views/${viewName}.js`
+      'sharedModules',
+      moduleName,
+      `./shared/${moduleName}.js`,
+      variables
     );
   }
 
-  async controller (controllerName) {
+  async component (componentName, variables = {}) {
     return this._load(
-      'controllers',
-      controllerName,
-      `./controllers/${controllerName.toLowerCase()}/${controllerName[0].toUpperCase() + controllerName.substring(1)}.js`
+      'components',
+      componentName,
+      `./components/${componentName}.js`,
+      variables
     );
   }
 
-  _load (type, name, file) {
+  _load (type, name, file, variables) {
     if (this[type][name]) {
+      this[type][name].variables = variables;
       return new Promise(resolve => resolve(this[type][name]))
     }
     else {
       return import(file)
         .then(loadedModule => {
           if (typeof loadedModule[name] === 'function') {
-            this[type][name] = new loadedModule[name](this);
+            this[type][name] = new loadedModule[name](this, variables);
           }
-          else {
-            this[type][name] = loadedModule[name];
-          }
+
           return this[type][name];
         });
     }
   }
 
   get environment () {
-    let environment;
-    if (typeof window !== 'undefined') {
-      let keys = Object.keys(window);
-
-      if (keys.includes('denoMain')) {
-        environment = 'deno';
-      }
-      else {
-        environment = 'client';
-      }
-    }
-
-    if (typeof global !== 'undefined') {
-      environment = 'node';
-    }
-
-    return environment;
+    return typeof global !== 'undefined' ? 'server' : 'client';
   }
 
 }

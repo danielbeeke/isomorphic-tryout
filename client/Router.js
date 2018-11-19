@@ -22,7 +22,7 @@ export class Router extends Module {
    * @param {boolean} [options.startListening=true] - Initiate listen on construct
    */
   constructor (kernel, options) {
-    super(arguments);
+    super(...arguments);
     this.options = Object.assign(
       {
         debug: true,
@@ -35,15 +35,11 @@ export class Router extends Module {
     this.isListening = false;
     this.routes = [];
     this.onHashChange = this.check.bind(this);
-
-    if (this.options.startListening) {
-      this.listen();
-    }
   }
 
   start () {
-    this.attachLinks();
     this.listen();
+    this.attachLinks();
   }
 
   attachLinks () {
@@ -122,9 +118,9 @@ export class Router extends Module {
       if (match !== null) {
         match.shift();
         route.handler.then(controller => {
-          // window.dispatchEvent(new CustomEvent('pagebuild', {
-          //   detail: { controller: controller }
-          // }));
+          window.dispatchEvent(new CustomEvent('pagebuild', {
+            detail: { controller: controller }
+          }));
 
           controller.execute().then(markup => {
             document.body.innerHTML = markup;

@@ -2,6 +2,7 @@ import { Module } from './Module.js';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import {Template} from "../shared/Template";
 
 export class Router extends Module {
   constructor () {
@@ -30,14 +31,9 @@ export class Router extends Module {
     return contentTypes[extension] ? contentTypes[extension] : 'text/html';
   }
 
-  getFile (filePath, callback) {
-
-  }
-
   /**
-   * Static file server
+   * Server
    */
-
   async serve (req, res) {
     let path = req.url.replace(/^$/, 'index.html');
     let fileName = path.substring(1);
@@ -48,13 +44,20 @@ export class Router extends Module {
         let currentPathController = this.controllers[path];
 
         currentPathController.execute().then(markup => {
-          res.writeHead(200, { 'Content-Type': contentType });
-          res.end(markup, 'utf-8');
+          this.kernel.sharedModule('Template').then(virtualDom => {
+            let markup = Template.toHtml(virtualDom);
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(markup, 'utf-8');
+          });
         });
       }
       else if (content) {
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(content, 'utf-8');
+      }
+      else {
+        res.writeHead(404, { 'Content-Type': contentType });
+        res.end('Oops', 'utf-8');
       }
     });
   }
